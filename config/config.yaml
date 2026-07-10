@@ -1,0 +1,9 @@
+grid_zone: DE_LU
+llm:
+  model: gemma4:e2b
+  temperature: 0
+guardrail:
+  cosine_threshold: 0.05
+paths:
+  artifacts: artifacts
+entsoe_token_env: ENTSOE_TOKEN      
