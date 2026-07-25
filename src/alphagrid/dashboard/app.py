@@ -179,6 +179,7 @@ fig.add_trace(
 
 # Plot Anomaly Points if present
 if anomalies:
+    assert isinstance(df.index, pd.DatetimeIndex)
     anomaly_dates = [a["date"] for a in anomalies]
     daily_df = df.groupby(df.index.date)["wind_mw"].mean()
     anomaly_vals = [daily_df.get(pd.to_datetime(d).date(), avg_gen) for d in anomaly_dates]
