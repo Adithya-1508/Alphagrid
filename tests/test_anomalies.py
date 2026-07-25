@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 from alphagrid.forecasting.anomalies import detect_anomalies
 
 
