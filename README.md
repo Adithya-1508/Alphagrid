@@ -6,21 +6,34 @@
 [![Type Checker](https://img.shields.io/badge/types-mypy-informational.svg)](https://mypy-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**AlphaGrid AI** is a production-grade time-series forecasting engine and multi-agent market-intelligence system designed for European power grid operators and energy traders across multiple bidding zones (**DE_LU** — Germany/Luxembourg, **FR** — France, **NL** — Netherlands, and **DK_1** — Denmark West).
+**AlphaGrid AI** is a production-grade time-series forecasting engine and multi-agent market-intelligence platform engineered for European power grid operators, quantitative analysts, and energy trading desks across key ENTSO-E bidding zones:
+* **`DE_LU`** — Germany / Luxembourg
+* **`FR`** — France
+* **`NL`** — Netherlands
+* **`DK_1`** — Denmark West
 
-It combines real-time grid data ingestion (ENTSO-E), meteorological forecasts (Open-Meteo), gradient boosted decision trees with Optuna tuning (LightGBM), vector-similarity search (ChromaDB), multi-agent Bull vs. Bear debate synthesis, and local LLMs (Ollama `gemma4:e2b`) backed by a **mathematical cosine-similarity guardrail ($\ge 0.85$)** to eliminate hallucinations.
+The platform bridges real-time physical power telemetry with multi-agent natural language intelligence to deliver actionable market signals. It combines real-time grid ingestion (**ENTSO-E REST API**), high-resolution meteorological data (**Open-Meteo API**), gradient boosted decision trees with hyperparameter search (**LightGBM + Optuna**), vector-similarity search (**ChromaDB**), parallel **Bull vs. Bear debate synthesis**, and local LLMs (**Ollama** `gemma4:e2b`) backed by a **mathematical cosine-similarity guardrail** to eliminate model hallucinations.
+
+---
+
+## 🎯 Trading Edge & Commercial Use Cases
+
+1. **Renewable Imbalance & Dunkelflaute Forecasting:** Detects sudden wind generation drop-offs across Central European bidding zones, enabling intraday traders to position against physical grid shortfalls before imbalance settlement prices spike.
+2. **Inter-Zone Flow & Congestion Arbitrage:** Evaluates cross-border transmission limits and regional supply-demand divergence between neighboring zones (e.g., `DE_LU` $\leftrightarrow$ `FR`).
+3. **Automated REMIT Market Intelligence:** Ingests unstructured energy market news and REMIT Urgent Market Messages (UMMs), extracting asset trip capacities and parsing market sentiment without manual review.
+4. **Deterministic Tail-Risk Guardrails:** Ensures automated market summaries cite exact source substrings and pass strict semantic embedding thresholds before reaching trading desk executives.
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ```text
-                           +---------------------------+
-                           |   ENTSO-E + Open-Meteo    |
-                           |  (Multi-Zone: DE/FR/NL/DK)|
-                           +-------------+-------------+
-                                         |
-                                         v
+                            +---------------------------+
+                            |   ENTSO-E + Open-Meteo    |
+                            |  (Multi-Zone: DE/FR/NL/DK)|
+                            +-------------+-------------+
+                                          |
+                                          v
 +-----------------------+   +------------+------------+   +------------------------+
 |   ingestion_agent.py  |   |   LightGBM Forecaster   |   |   artifacts/raw_cache  |
 | (RSS -> Clean HTML    |   |  (Optuna Auto-Tuning &  |   |   (Parquet Slices)     |
@@ -29,138 +42,75 @@ It combines real-time grid data ingestion (ENTSO-E), meteorological forecasts (O
             |                            |                             |
             v                            v                             v
 +-----------+-----------+   +------------+------------+   +------------+-----------+
-|    debate_agent.py    |   |  detect_anomalies.py    |   |  Streamlit Dashboard   |
+|    debate_agent.py    |   |  detect_anomalies.py    |   |   Streamlit Dashboard  |
 | (Bull vs. Bear LLM)   +-->| (Z-Score Residual Days) +-->|  + Executive PDF Brief |
 +-----------+-----------+   +------------+------------+   +------------------------+
-            |                            
-            v                            
-+-----------+-----------+                
-|      guardrail.py     |                
-| (Pydantic Schema &    |                
-|  Cosine Sim >= 0.85)  |                
-+-----------------------+                
-```
+            |                                
+            v                                
++-----------+-----------+                    
+|     guardrail.py      |                    
+| (Pydantic Schema &    |                    
+|  Cosine Sim >= 0.85)  |                    
++-----------------------+
 
----
-
-## ✨ Key Capabilities
-
-1. **Multi-Bidding Zone Ingestion Engine (`src/alphagrid/data/`)**:
-   - Ingests actual wind generation from **ENTSO-E REST Platform** and hourly weather metrics from **Open-Meteo** across `DE_LU`, `FR`, `NL`, and `DK_1`.
-   - Enforces explicit UTC localization across all pandas `DatetimeIndex` structures.
-   - Caches parquet slices locally in `artifacts/raw_cache/` to minimize API latency. Includes a deterministic synthetic fallback generator.
-
-2. **Probabilistic Forecasting & Optuna Tuning Engine (`src/alphagrid/forecasting/`)**:
-   - Fits LightGBM regressors with automated **Optuna hyperparameter optimization** (`tune.py`) evaluating cross-validation MAE.
-   - Generates 24-to-48 hour ahead forecasts with **90% confidence prediction intervals**.
-   - Computes daily residual z-scores to flag grid anomaly days ("Surplus" vs "Shortage").
-
-3. **Multi-Agent Debate & Guardrail Layer (`src/alphagrid/agents/`)**:
-   - **Multi-Agent Debate (`debate_agent.py`)**: Runs parallel synthesis between a **Bullish Agent** (upside price catalysts) and **Bearish Agent** (downside oversupply catalysts).
-   - **Ingestion Agent**: Strips raw HTML tags from RSS news feeds before embedding text into persistent **ChromaDB** (`artifacts/chroma/`).
-   - **Mathematical Guardrail**: Validates candidates via Pydantic (`MarketThesis`), verifies verbatim citation substrings, and enforces embedding cosine similarity $\ge 0.85$ using `sentence-transformers` (`all-MiniLM-L6-v2`).
-
-4. **Interactive Dashboard & Executive PDF Brief (`src/alphagrid/dashboard/`)**:
-   - Built with Streamlit, Plotly, and `fpdf2`.
-   - Supports multi-zone switching, side-by-side Bull vs. Bear debate card inspection, Optuna hyperparameter study execution, and **one-click Executive PDF Report downloading**.
-
-5. **Portable Docker Containerization (`Dockerfile`, `docker-compose.yml`)**:
-   - Fully containerized stack bundling the AlphaGrid Streamlit dashboard and Ollama LLM service for one-command deployment (`docker compose up`).
-
----
-
-## 📁 Repository Structure
-
-```text
-alphagrid/
-├── Dockerfile                 # Multi-stage Python 3.12 container image
-├── docker-compose.yml         # Container orchestration (App + Ollama service)
-├── .env                       # Local secrets (ENTSOE_TOKEN - GitIgnored)
+🔬 Mathematical Formulations & Methodology1. Probabilistic Prediction IntervalRather than issuing single point forecasts, LightGBM fits quantile loss functions at $\alpha/2 = 0.05$ and $1 - \alpha/2 = 0.95$ to output a 90% confidence prediction band:$$\text{Confidence Band}_t = \left[ \hat{y}_{t, \, 0.05}, \; \hat{y}_{t, \, 0.95} \right]$$2. Residual Anomaly Z-ScoreSystemic imbalance days ("Surplus" vs "Shortage") are detected by calculating normalized residual deviations $e_t = y_t - \hat{y}_t$ over rolling time windows:$$Z_t = \frac{e_t - \mu_e}{\sigma_e}$$Anomalies are flagged when $\vert{}Z_t\vert{} \ge 2.0$, signaling abnormal weather shifts or transmission constraints.3. Embedding Cosine-Similarity GuardrailLLM-generated market thesis candidates $\mathbf{v}_{\text{llm}}$ are embedded via sentence-transformers (all-MiniLM-L6-v2) and compared against the grounded RAG context vector $\mathbf{u}_{\text{ctx}}$:$$S_{\cos}(\mathbf{u}_{\text{ctx}}, \mathbf{v}_{\text{llm}}) = \frac{\mathbf{u}_{\text{ctx}} \cdot \mathbf{v}_{\text{llm}}}{\Vert{}\mathbf{u}_{\text{ctx}}\Vert{} \Vert{}\mathbf{v}_{\text{llm}}\Vert{}} \ge 0.85$$Responses scoring $S_{\cos} < 0.85$ or failing Pydantic schema verification are automatically rejected and re-routed for deterministic fallback synthesis.✨ Key Technical CapabilitiesMulti-Bidding Zone Ingestion Pipeline (src/alphagrid/data/):Ingests actual wind/solar generation via ENTSO-E REST API and meteorological metrics via Open-Meteo across DE_LU, FR, NL, and DK_1.Enforces explicit UTC localization across all pandas DatetimeIndex objects to prevent offset mismatch errors.Caches raw telemetry locally as Parquet slices in artifacts/raw_cache/ to minimize external network overhead, featuring a deterministic synthetic data fallback generator.Probabilistic Forecasting & Optuna Engine (src/alphagrid/forecasting/):Automated Optuna hyperparameter optimization (tune.py) evaluating cross-validation Mean Absolute Error (MAE) across LightGBM regressors.Constructs rolling lag features, exponential moving averages, and time-series calendar embeddings.Generates 24-to-48 hour forecasts with prediction intervals and tracks daily residual Z-scores.Multi-Agent RAG & Debate Architecture (src/alphagrid/agents/):Bull vs. Bear Debate (debate_agent.py): Executes parallel prompt orchestration between a Bullish Agent (upside price/demand catalysts) and Bearish Agent (downside oversupply catalysts).Ingestion Agent: Strips raw HTML tags from energy news RSS feeds before chunking and embedding text into persistent ChromaDB collections (artifacts/chroma/).Mathematical Guardrail (guardrail.py): Enforces structured Pydantic validation (MarketThesis), verifies verbatim citation substrings, and validates cosine similarity ($S_{\cos} \ge 0.85$).Interactive Analytics & PDF Reporting (src/alphagrid/dashboard/):Built with Streamlit, Plotly, and fpdf2.Provides real-time bidding zone switching, interactive prediction band visualization, Optuna study execution inspection, and one-click Executive PDF Report generation.Production Docker Containerization (Dockerfile, docker-compose.yml):Multi-stage containerized architecture bundling the Python dashboard and Ollama LLM service for one-command orchestration (docker compose up).📁 Repository StructurePlaintextalphagrid/
+├── Dockerfile                  # Multi-stage Python 3.12 container image
+├── docker-compose.yml          # Container orchestration (App + Ollama service)
+├── .env                        # Local environment secrets (ENTSOE_TOKEN - GitIgnored)
 ├── .streamlit/
-│   └── config.toml            # Streamlit server & file-watcher configuration
+│   └── config.toml             # Streamlit server & file-watcher configuration
 ├── config/
-│   └── config.yaml            # Grid zones map, LLM settings, guardrail threshold
-├── artifacts/                 # Local models, parquet raw cache, & ChromaDB
+│   └── config.yaml             # Bidding zones map, LLM params, guardrail thresholds
+├── artifacts/                  # Local model binaries, Parquet cache, & ChromaDB vector store
 ├── src/
 │   └── alphagrid/
-│       ├── config.py          # Config & .env loader
-│       ├── data/              # ENTSO-E, Open-Meteo, & Feature Store
+│       ├── config.py           # Configuration & .env loader
+│       ├── data/               # ENTSO-E, Open-Meteo, & Feature Engineering Store
 │       │   ├── entsoe_client.py
 │       │   ├── weather_client.py
 │       │   ├── time_utils.py
 │       │   └── feature_store.py
-│       ├── forecasting/       # LightGBM, Predictor, Anomaly Detector, & Optuna Tuner
+│       ├── forecasting/        # LightGBM Engine, Predictor, Anomaly Detector, & Optuna Tuner
 │       │   ├── train.py
 │       │   ├── predict.py
 │       │   ├── anomalies.py
 │       │   └── tune.py
-│       ├── llm/               # Ollama Client Wrapper
+│       ├── llm/                # Local Ollama Client Wrapper
 │       │   └── ollama_client.py
-│       ├── agents/            # RSS Ingestion, Synthesis, Debate, Guardrail, Orchestrator
+│       ├── agents/             # RSS Ingestion, Synthesis, Debate, Guardrail, Orchestrator
 │       │   ├── ingestion_agent.py
 │       │   ├── guardrail.py
 │       │   ├── synthesis_agent.py
 │       │   ├── debate_agent.py
 │       │   └── orchestrator.py
-│       └── dashboard/         # Streamlit App & PDF Brief Generator
+│       └── dashboard/          # Streamlit Interactive App & PDF Brief Generator
 │           ├── app.py
 │           └── pdf_report.py
-├── tests/                     # Automated Test Suite (22/22 passing)
+├── tests/                      # Automated Unit & Integration Test Suite (22/22 passing)
 │   ├── test_data.py
 │   ├── test_predict.py
 │   ├── test_anomalies.py
 │   ├── test_agents.py
 │   ├── test_dashboard.py
 │   └── test_enhancements.py
-└── pyproject.toml             # Dependencies & Ruff/Mypy tool configs
-```
-
----
-
-## 🚀 Quick Start Guide
-
-### Option A: Local Python Environment
-
-```powershell
-# 1. Install dependencies using uv
+└── pyproject.toml              # Project dependencies, Ruff, & Mypy configurations
+🚀 Quick Start GuideOption A: Fast Local Environment Setup (uv)PowerShell# 1. Install dependencies using uv
 uv sync
 
-# 2. Add your ENTSO-E Token to alphagrid/.env
+# 2. Add your ENTSO-E API Security Token to .env
 ENTSOE_TOKEN=your_entsoe_api_security_token_here
 
 # 3. Launch Streamlit Dashboard
 streamlit run src/alphagrid/dashboard/app.py
-```
-
-### Option B: Docker Container Deployment
-
-```powershell
-# Run entire stack (App + Ollama service) with Docker Compose
+Option B: Docker Container DeploymentPowerShell# Build and spin up the complete application stack (Dashboard + Ollama)
 docker compose up --build
-```
-
-Access the dashboard at **`http://localhost:8501`**.
-
----
-
-## 🧪 Testing & Code Quality
-
-Run the automated test suite and static type checkers:
-
-```powershell
-# 1. Run full unit test suite (22 tests)
+Access the interactive trading portal at http://localhost:8501.🧪 Testing & Code Quality AssuranceThe codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell# 1. Execute full unit and integration test suite (22/22 passing)
 pytest
 
-# 2. Run static type checker (0 errors across 29 files)
+# 2. Run static type analysis (0 type errors across 29 modules)
 mypy src tests
 
-# 3. Run linter and formatting checks
+# 3. Run linter and code formatting checks
 ruff check src tests
 ruff format --check .
-```
-
----
-
-## 📜 License
-
-Distributed under the MIT License. See `LICENSE` for details.
+📜 LicenseDistributed under the MIT License. See LICENSE for details.
