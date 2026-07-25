@@ -9,9 +9,7 @@ class PDFReport(FPDF):
     def header(self) -> None:
         self.set_font("Helvetica", "B", 16)
         self.set_text_color(31, 119, 180)
-        self.cell(
-            0, 10, "AlphaGrid AI - Executive Brief", new_x="LMARGIN", new_y="NEXT", align="C"
-        )
+        self.cell(0, 10, "AlphaGrid AI - Executive Brief", new_x="LMARGIN", new_y="NEXT", align="C")
         self.set_font("Helvetica", "I", 10)
         self.set_text_color(100, 100, 100)
         self.cell(
@@ -99,7 +97,7 @@ def generate_executive_pdf(
         pdf.cell(0, 8, "3. Vector Store Source Context (ChromaDB)", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 8)
         for idx, chunk in enumerate(source_chunks):
-            pdf.multi_cell(0, 4, f"Chunk {idx+1}: {chunk}")
+            pdf.multi_cell(0, 4, f"Chunk {idx + 1}: {chunk}")
             pdf.ln(2)
 
     return bytes(pdf.output())
