@@ -146,7 +146,12 @@ alphagrid/
 │   ├── test_dashboard.py
 │   └── test_enhancements.py
 └── pyproject.toml              # Project dependencies, Ruff, & Mypy configurations
-🚀 Quick Start GuideOption A: Fast Local Environment Setup (uv)PowerShell# 1. Install dependencies using uv
+## 🚀 Quick Start Guide
+
+### Option A: Fast Local Environment Setup (`uv`)
+
+```powershell
+# 1. Install dependencies using uv
 uv sync
 
 # 2. Add your ENTSO-E API Security Token to .env
@@ -154,9 +159,15 @@ ENTSOE_TOKEN=your_entsoe_api_security_token_here
 
 # 3. Launch Streamlit Dashboard
 streamlit run src/alphagrid/dashboard/app.py
-Option B: Docker Container DeploymentPowerShell# Build and spin up the complete application stack (Dashboard + Ollama)
+
+# Build and spin up the complete application stack (Dashboard + Ollama)
 docker compose up --build
-Access the interactive trading portal at http://localhost:8501.🧪 Testing & Code Quality AssuranceThe codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell# 1. Execute full unit and integration test suite (22/22 passing)
+Access the interactive trading portal at http://localhost:8501.
+
+Testing & Code Quality Assurance
+The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell#
+
+# 1. Execute full unit and integration test suite (22/22 passing)
 pytest
 
 # 2. Run static type analysis (0 type errors across 29 modules)
@@ -164,7 +175,10 @@ mypy src tests
 
 # 3. Run linter and code formatting checks
 ruff check src tests
-ruff format --check .
-📜 LicenseDistributed under the MIT License. See LICENSE for
+ruff format --check .se.
+
+
+📜 License
+Distributed under the MIT License. See LICENSE for details.
 
  details.
