@@ -181,6 +181,6 @@ mypy src tests
 # 3. Run linter and code formatting checks
 ruff check src tests
 ruff format --check .se.
-
-📜 License
+```
+### 📜 License
 Distributed under the MIT License. See LICENSE for details.
