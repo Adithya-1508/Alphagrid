@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     environment:
       - ENTSOE_TOKEN=${ENTSOE_TOKEN}
     volumes:

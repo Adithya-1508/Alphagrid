@@ -12,15 +12,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Copy project definition
+# Copy project definition for dependency layer caching
 COPY pyproject.toml README.md ./
 COPY config/ config/
 COPY src/ src/
 
-# Install Python dependencies
-RUN uv pip install --system --no-cache .
+# Install Python dependencies with uv cache mount
+RUN --mount=type=cache,target=/root/.cache/uv uv pip install --system .
 
-# Copy remaining code
+# Copy remaining files
 COPY . .
 
 # Expose Streamlit port
