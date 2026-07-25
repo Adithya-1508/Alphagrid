@@ -12,10 +12,12 @@ dependencies = [
     "entsoe-py>=0.8.0",
     "fastapi>=0.139.0",
     "feedparser>=6.0.12",
+    "fpdf2>=2.8.7",
     "lightgbm>=4.6.0",
     "numpy>=2.5.1",
     "ollama>=0.6.2",
     "openmeteo-requests>=1.7.5",
+    "optuna>=4.9.0",
     "pandas>=3.0.3",
     "plotly>=6.9.0",
     "pydantic>=2.13.4",
@@ -31,7 +33,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["ruff", "mypy"]
 test = ["pytest"]
-ml = ["lightgbm", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests"]
+ml = ["lightgbm", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests", "optuna"]
 
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]

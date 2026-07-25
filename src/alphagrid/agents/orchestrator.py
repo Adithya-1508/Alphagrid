@@ -2,19 +2,35 @@ from __future__ import annotations
 
 from typing import Any
 
+from .debate_agent import run_market_debate
 from .guardrail import validate_thesis
 from .synthesis_agent import synthesize_thesis
 
 
 def process_anomaly_event(
-    anomaly_event: dict[str, Any], threshold: float | None = None
+    anomaly_event: dict[str, Any],
+    threshold: float | None = None,
+    use_debate: bool = True,
 ) -> dict[str, Any]:
     """
     Orchestrates the agentic market-intel loop:
-    1. Synthesizes a candidate MarketThesis from ChromaDB news chunks.
+    1. Runs Multi-Agent Bull vs. Bear Debate (or single candidate synthesis).
     2. Validates candidate against guardrail (schema + verbatim citations + cosine sim >= 0.85).
     3. Returns structured output indicating approval or rejection.
     """
+    if use_debate:
+        debate_res = run_market_debate(anomaly_event, threshold=threshold)
+        return {
+            "status": debate_res["status"],
+            "reason": debate_res["reason"],
+            "thesis": debate_res["winning_thesis"],
+            "bull_thesis": debate_res["bull_thesis"],
+            "bull_valid": debate_res.get("bull_valid", False),
+            "bear_thesis": debate_res["bear_thesis"],
+            "bear_valid": debate_res.get("bear_valid", False),
+            "source_chunks": debate_res["source_chunks"],
+        }
+
     candidate, source_chunks = synthesize_thesis(anomaly_event)
 
     if candidate is None:
