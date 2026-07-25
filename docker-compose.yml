@@ -1,0 +1,26 @@
+services:
+  alphagrid-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - ENTSOE_TOKEN=${ENTSOE_TOKEN}
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./config:/app/config
+    depends_on:
+      - ollama-service
+    restart: unless-stopped
+
+  ollama-service:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

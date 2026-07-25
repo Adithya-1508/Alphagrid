@@ -1,9 +1,26 @@
 grid_zone: DE_LU
+grid_zones:
+  DE_LU:
+    name: "Germany - Luxembourg"
+    latitude: 50.0
+    longitude: 10.0
+  FR:
+    name: "France"
+    latitude: 46.6
+    longitude: 2.2
+  NL:
+    name: "Netherlands"
+    latitude: 52.1
+    longitude: 5.3
+  DK_1:
+    name: "Denmark West (DK1)"
+    latitude: 56.2
+    longitude: 9.5
 llm:
   model: gemma4:e2b
   temperature: 0
 guardrail:
-  cosine_threshold: 0.05
+  cosine_threshold: 0.85
 paths:
   artifacts: artifacts
 entsoe_token_env: ENTSOE_TOKEN

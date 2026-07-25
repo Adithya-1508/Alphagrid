@@ -5,33 +5,42 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ..config import load_config
 from . import entsoe_client, weather_client
 from .time_utils import as_utc
 
 CACHE_DIR = Path("artifacts") / "raw_cache"
 
 
-def _cache_path(source: str, start, end) -> Path:
+def _cache_path(source: str, zone: str, start, end) -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    return (
-        CACHE_DIR / f"{source}_DE_LU{pd.Timestamp(start).date()}_{pd.Timestamp(end).date()}.parquet"
-    )
+    d_start = pd.Timestamp(start).date()
+    d_end = pd.Timestamp(end).date()
+    return CACHE_DIR / f"{source}_{zone}_{d_start}_{d_end}.parquet"
 
 
-def build_features(start, end, use_cache: bool = True) -> pd.DataFrame:
+def build_features(start, end, zone: str = "DE_LU", use_cache: bool = True) -> pd.DataFrame:
     start_utc, end_utc = as_utc(start), as_utc(end)
-    wpath = _cache_path("wind", start_utc, end_utc)
+    wpath = _cache_path("wind", zone, start_utc, end_utc)
     if use_cache and wpath.exists():
         wind = pd.read_parquet(wpath)
     else:
-        wind = entsoe_client.get_wind_generation(start_utc, end_utc)
+        wind = entsoe_client.get_wind_generation(start_utc, end_utc, zone=zone)
         wind.to_parquet(wpath)
-    mpath = _cache_path("weather", start_utc, end_utc)
+
+    # Load coordinates for zone from config
+    cfg = load_config()
+    zone_info = cfg.get("grid_zones", {}).get(zone, {})
+    lat = zone_info.get("latitude", 50.0)
+    lon = zone_info.get("longitude", 10.0)
+
+    mpath = _cache_path("weather", zone, start_utc, end_utc)
     if use_cache and mpath.exists():
         weather = pd.read_parquet(mpath)
     else:
-        weather = weather_client.get_weather(start_utc, end_utc)
+        weather = weather_client.get_weather(start_utc, end_utc, lat=lat, lon=lon)
         weather.to_parquet(mpath)
+
     for name, df in (("wind", wind), ("weather", weather)):
         if not isinstance(df.index, pd.DatetimeIndex):
             raise TypeError(f"{name} index must be a pd.DatetimeIndex")

@@ -10,10 +10,12 @@ import streamlit as st
 from alphagrid.agents.ingestion_agent import ingest_rss_feed
 from alphagrid.agents.orchestrator import process_anomaly_event
 from alphagrid.config import load_config
+from alphagrid.dashboard.pdf_report import generate_executive_pdf
 from alphagrid.data.feature_store import build_features, generate_synthetic
 from alphagrid.forecasting.anomalies import detect_anomalies
 from alphagrid.forecasting.predict import predict_next_hours
 from alphagrid.forecasting.train import train_model
+from alphagrid.forecasting.tune import tune_hyperparameters
 
 # Streamlit Page Config
 st.set_page_config(
@@ -25,17 +27,34 @@ st.set_page_config(
 
 # Load System Configuration
 cfg = load_config()
-grid_zone = cfg.get("grid_zone", "DE_LU")
+grid_zones_map = cfg.get(
+    "grid_zones",
+    {
+        "DE_LU": {"name": "Germany - Luxembourg"},
+        "FR": {"name": "France"},
+        "NL": {"name": "Netherlands"},
+        "DK_1": {"name": "Denmark West (DK1)"},
+    },
+)
 
 # App Header
 st.title("⚡ AlphaGrid AI — Autonomous Time-Series & Market-Intel Platform")
 st.caption(
-    "Real-time grid forecasting, anomaly detection, and guardrailed LLM thesis synthesis for "
-    f"bidding zone **{grid_zone}**."
+    "Real-time grid forecasting, multi-agent debate synthesis, and guardrailed trading "
+    "intelligence."
 )
 
 # Sidebar Controls
 st.sidebar.header("🎛️ Pipeline Controls")
+
+selected_zone_code = str(
+    st.sidebar.selectbox(
+        "Bidding Zone",
+        options=list(grid_zones_map.keys()),
+        format_func=lambda x: f"{x} ({grid_zones_map[x].get('name', x)})",
+    )
+    or "DE_LU"
+)
 
 data_source = st.sidebar.radio(
     "Data Source",
@@ -57,6 +76,7 @@ threshold = st.sidebar.slider(
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔄 Actions")
 retrain_clicked = st.sidebar.button("Re-train LightGBM Model")
+tune_clicked = st.sidebar.button("Optuna Auto-Tune Hyperparams")
 ingest_clicked = st.sidebar.button("Ingest RSS News Feeds")
 
 # Format UTC Strings
@@ -66,27 +86,41 @@ end_utc = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc).i
 
 # Fetch or Generate Data
 @st.cache_data(ttl=600)
-def load_dataset(source_type: str, start: str, end: str) -> pd.DataFrame:
+def load_dataset(source_type: str, zone: str | None, start: str, end: str) -> pd.DataFrame:
+    effective_zone = zone or "DE_LU"
     if source_type == "Live ENTSO-E + Open-Meteo":
         try:
-            return build_features(start, end, use_cache=True)
+            return build_features(start, end, zone=effective_zone, use_cache=True)
         except Exception as e:  # noqa: BLE001
-            st.error(f"Failed to fetch live ENTSO-E data: {e}. Falling back to synthetic.")
+            st.error(
+                f"Failed to fetch live ENTSO-E data for {effective_zone}: {e}. "
+                "Falling back to synthetic data."
+            )
             return generate_synthetic(start, end)
     else:
         return generate_synthetic(start, end)
 
 
-df = load_dataset(data_source, start_utc, end_utc)
+df = load_dataset(data_source, selected_zone_code, start_utc, end_utc)
 
 # Model Training Action
 if retrain_clicked:
-    with st.spinner("Training LightGBM model on dataset..."):
+    with st.spinner(f"Training LightGBM model on {selected_zone_code} dataset..."):
         try:
             mae = train_model(df)
-            st.sidebar.success(f"Model trained successfully! Validation MAE: {mae:.2f} MW")
+            st.sidebar.success(f"Model trained! Validation MAE: {mae:.2f} MW")
         except Exception as err:  # noqa: BLE001
             st.sidebar.error(f"Training failed: {err}")
+
+# Optuna Hyperparameter Tuning Action
+if tune_clicked:
+    with st.spinner("Running Optuna Automated Hyperparameter Study (15 trials)..."):
+        try:
+            best_params, best_mae = tune_hyperparameters(df, n_trials=15)
+            st.sidebar.success(f"Optuna Study Complete! Best CV MAE: {best_mae:.2f} MW")
+            st.sidebar.json(best_params)
+        except Exception as err:  # noqa: BLE001
+            st.sidebar.error(f"Optuna tuning failed: {err}")
 
 # RSS Ingestion Action
 if ingest_clicked:
@@ -127,7 +161,7 @@ with col4:
 st.markdown("---")
 
 # Main Visualization Section
-st.subheader("📈 Time-Series Forecast & Prediction Interval")
+st.subheader(f"📈 Time-Series Forecast & Prediction Interval — {selected_zone_code}")
 
 # Construct Plotly Figure
 fig = go.Figure()
@@ -208,8 +242,8 @@ st.plotly_chart(fig)
 
 st.markdown("---")
 
-# Anomaly Callouts & Agentic Intel Synthesis Section
-st.subheader("🤖 Agentic Market-Intel Synthesis & Guardrail Validation")
+# Multi-Agent Debate & Agentic Intel Synthesis Section
+st.subheader("🤖 Multi-Agent Bull vs. Bear Debate & Guardrail Validation")
 
 if not anomalies:
     st.info(
@@ -221,24 +255,51 @@ else:
         f"{a['date']} — {a['direction']} (Mag: {a['magnitude']:.0f} MW, Z: {a['zscore']:.2f})"
         for a in anomalies
     ]
-    selected_option = st.selectbox("Select Flagged Anomaly Day for LLM Synthesis:", anomaly_options)
+    selected_option = st.selectbox(
+        "Select Flagged Anomaly Day for Multi-Agent Debate:", anomaly_options
+    )
 
     selected_index = anomaly_options.index(selected_option)
     selected_anomaly = anomalies[selected_index]
+    selected_anomaly["market_symbol"] = selected_zone_code
 
-    if st.button("Run Market-Intel Synthesis & Guardrail Check", type="primary"):
-        with st.spinner("Synthesizing market thesis with Ollama & validating guardrails..."):
-            result = process_anomaly_event(selected_anomaly)
+    if st.button("Execute Multi-Agent Debate & Guardrail Check", type="primary"):
+        with st.spinner("Running Bull vs. Bear Agent Debate & evaluating Guardrail..."):
+            result = process_anomaly_event(selected_anomaly, use_debate=True)
 
             status = result.get("status", "REJECTED")
             thesis_data = result.get("thesis")
+            bull_data = result.get("bull_thesis")
+            bear_data = result.get("bear_thesis")
             reason = result.get("reason", "")
             source_chunks = result.get("source_chunks", [])
 
-            if status == "APPROVED" and thesis_data:
-                st.success("✅ GUARDRAIL PASSED: Thesis verified (Cosine Sim >= 0.85).")
+            # Display Bull vs Bear Debate Cards side-by-side
+            d_col1, d_col2 = st.columns(2)
+            with d_col1:
+                st.markdown("### 🐂 Bullish Agent Candidate")
+                if bull_data:
+                    b_pass = "✅ PASS" if result.get("bull_valid") else "❌ FAIL"
+                    st.caption(f"Guardrail Check: {b_pass}")
+                    st.write(bull_data.get("reasoning", ""))
+                else:
+                    st.write("No Bull thesis generated.")
 
-                with st.expander("📄 Validated Market Thesis Payload", expanded=True):
+            with d_col2:
+                st.markdown("### 🐻 Bearish Agent Candidate")
+                if bear_data:
+                    br_pass = "✅ PASS" if result.get("bear_valid") else "❌ FAIL"
+                    st.caption(f"Guardrail Check: {br_pass}")
+                    st.write(bear_data.get("reasoning", ""))
+                else:
+                    st.write("No Bear thesis generated.")
+
+            st.markdown("---")
+
+            if status == "APPROVED" and thesis_data:
+                st.success("✅ GUARDRAIL APPROVED: Winning thesis verified (Cosine Sim >= 0.85).")
+
+                with st.expander("📄 Validated Winning Market Thesis Payload", expanded=True):
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         st.markdown(f"**Market Symbol:** `{thesis_data.get('market_symbol')}`")
@@ -256,6 +317,16 @@ else:
                     st.markdown("### Verbatim Citations")
                     for cit in thesis_data.get("verbatim_citations", []):
                         st.info(f'"{cit}"')
+
+                # PDF Download Button
+                pdf_bytes = generate_executive_pdf(selected_anomaly, thesis_data, source_chunks)
+                st.download_button(
+                    label="📄 Download Executive PDF Brief",
+                    data=pdf_bytes,
+                    file_name=f"alphagrid_intel_brief_{selected_zone_code}_{selected_anomaly.get('date')}.pdf",
+                    mime="application/pdf",
+                )
+
             else:
                 st.warning(f"⚠️ GUARDRAIL REJECTED: {reason}")
                 if thesis_data:
