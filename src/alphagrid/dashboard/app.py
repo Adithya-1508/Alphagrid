@@ -47,10 +47,13 @@ st.caption(
 # Sidebar Controls
 st.sidebar.header("🎛️ Pipeline Controls")
 
-selected_zone_code = st.sidebar.selectbox(
-    "Bidding Zone",
-    options=list(grid_zones_map.keys()),
-    format_func=lambda x: f"{x} ({grid_zones_map[x].get('name', x)})",
+selected_zone_code = str(
+    st.sidebar.selectbox(
+        "Bidding Zone",
+        options=list(grid_zones_map.keys()),
+        format_func=lambda x: f"{x} ({grid_zones_map[x].get('name', x)})",
+    )
+    or "DE_LU"
 )
 
 data_source = st.sidebar.radio(
@@ -83,13 +86,15 @@ end_utc = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc).i
 
 # Fetch or Generate Data
 @st.cache_data(ttl=600)
-def load_dataset(source_type: str, zone: str, start: str, end: str) -> pd.DataFrame:
+def load_dataset(source_type: str, zone: str | None, start: str, end: str) -> pd.DataFrame:
+    effective_zone = zone or "DE_LU"
     if source_type == "Live ENTSO-E + Open-Meteo":
         try:
-            return build_features(start, end, zone=zone, use_cache=True)
+            return build_features(start, end, zone=effective_zone, use_cache=True)
         except Exception as e:  # noqa: BLE001
             st.error(
-                f"Failed to fetch live ENTSO-E data for {zone}: {e}. Falling back to synthetic."
+                f"Failed to fetch live ENTSO-E data for {effective_zone}: {e}. "
+                "Falling back to synthetic data."
             )
             return generate_synthetic(start, end)
     else:
