@@ -220,9 +220,7 @@ else:
         f"{a['date']} — {a['direction']} (Mag: {a['magnitude']:.0f} MW, Z: {a['zscore']:.2f})"
         for a in anomalies
     ]
-    selected_option = st.selectbox(
-        "Select Flagged Anomaly Day for LLM Synthesis:", anomaly_options
-    )
+    selected_option = st.selectbox("Select Flagged Anomaly Day for LLM Synthesis:", anomaly_options)
 
     selected_index = anomaly_options.index(selected_option)
     selected_anomaly = anomalies[selected_index]
@@ -266,4 +264,4 @@ else:
             if source_chunks:
                 with st.expander("📚 Retrieved Source News Chunks (ChromaDB)"):
                     for idx_chunk, chunk in enumerate(source_chunks):
-                        st.markdown(f"**Chunk {idx_chunk+1}:** {chunk}")
+                        st.markdown(f"**Chunk {idx_chunk + 1}:** {chunk}")
