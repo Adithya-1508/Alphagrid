@@ -6,4 +6,7 @@ guardrail:
   cosine_threshold: 0.05
 paths:
   artifacts: artifacts
-entsoe_token_env: ENTSOE_TOKEN      
+entsoe_token_env: ENTSOE_TOKEN
+weather:
+  latitude: 50.0
+  longitude: 10.0

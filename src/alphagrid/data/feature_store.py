@@ -1,9 +1,12 @@
 from __future__ import annotations
+
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from .time_utils import as_utc
+
 from . import entsoe_client, weather_client
+from .time_utils import as_utc
 
 CACHE_DIR = Path("artifacts") / "raw_cache"
 
@@ -30,9 +33,14 @@ def build_features(start, end, use_cache: bool = True) -> pd.DataFrame:
         weather = weather_client.get_weather(start_utc, end_utc)
         weather.to_parquet(mpath)
     for name, df in (("wind", wind), ("weather", weather)):
+        if not isinstance(df.index, pd.DatetimeIndex):
+            raise TypeError(f"{name} index must be a pd.DatetimeIndex")
         if df.index.tz is None:
             raise ValueError(f"{name} index is naive; UTC required")
-    return wind.join(weather, how="outer").sort_index()
+
+    wind_hourly = wind.resample("1h").mean()
+    weather_hourly = weather.resample("1h").mean()
+    return wind_hourly.join(weather_hourly, how="inner").sort_index()
 
 
 def generate_synthetic(start, end) -> pd.DataFrame:
