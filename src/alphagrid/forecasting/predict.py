@@ -5,6 +5,7 @@ import pandas as pd
 import lightgbm as lgb
 from .train import build_feature_matrix, MODEL_DIR, FEATURES
 
+
 def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
     """
     Loads the trained model, constructs out-of-sample features,
@@ -13,7 +14,9 @@ def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFram
     if df.empty:
         raise ValueError("Input DataFrame df cannot be empty.")
     if len(df) < 24:
-        raise ValueError(f"Input DataFrame must contain at least 24 rows of historical data, got {len(df)}.")
+        raise ValueError(
+            f"Input DataFrame must contain at least 24 rows of historical data, got {len(df)}."
+        )
 
     model_path = MODEL_DIR / "wind_model.txt"
     meta_path = MODEL_DIR / "model_metadata.json"
@@ -32,12 +35,9 @@ def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFram
     assert isinstance(df.index, pd.DatetimeIndex)
     last_dt = df.index[-1]
     future_index = pd.date_range(
-        start=last_dt + pd.Timedelta(hours=1),
-        periods=horizon_hours,
-        freq="h",
-        tz=df.index.tz
+        start=last_dt + pd.Timedelta(hours=1), periods=horizon_hours, freq="h", tz=df.index.tz
     )
-    
+
     future_df = pd.DataFrame(index=future_index, columns=df.columns, dtype=float)
     combined_df = pd.concat([df, future_df])
 
@@ -51,10 +51,6 @@ def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFram
     upper_bound = predictions + 1.645 * residual_std
 
     return pd.DataFrame(
-        {
-            "forecast": predictions,
-            "lower_bound": lower_bound,
-            "upper_bound": upper_bound
-        },
-        index=future_index
+        {"forecast": predictions, "lower_bound": lower_bound, "upper_bound": upper_bound},
+        index=future_index,
     )

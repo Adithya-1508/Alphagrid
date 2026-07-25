@@ -34,7 +34,7 @@ def build_features(start, end, use_cache: bool = True) -> pd.DataFrame:
             raise TypeError(f"{name} index must be a pd.DatetimeIndex")
         if df.index.tz is None:
             raise ValueError(f"{name} index is naive; UTC required")
-    
+
     wind_hourly = wind.resample("1h").mean()
     weather_hourly = weather.resample("1h").mean()
     return wind_hourly.join(weather_hourly, how="inner").sort_index()

@@ -3,14 +3,13 @@ from typing import Any
 import pandas as pd
 import numpy as np
 
+
 def detect_anomalies(
-    actuals: pd.Series,
-    forecasts: pd.Series,
-    threshold: float = 2.0
+    actuals: pd.Series, forecasts: pd.Series, threshold: float = 2.0
 ) -> list[dict[str, Any]]:
     """
     Identifies anomaly days based on standard deviations of forecast residuals.
-    
+
     Returns:
         List of dicts representing flagged anomaly days.
     """
@@ -34,7 +33,7 @@ def detect_anomalies(
         return []
 
     df["residual"] = df["actual"] - df["forecast"]
-    
+
     # Compute normalized z-scores of the residuals
     mean_res = df["residual"].mean()
     std_res = df["residual"].std()
@@ -53,20 +52,20 @@ def detect_anomalies(
 
     # Group residuals by day to identify "anomaly days"
     daily = df.groupby(df.index.date).agg(
-        mean_residual=("residual", "mean"),
-        max_abs_z=("abs_z", "max"),
-        mean_z=("z_score", "mean")
+        mean_residual=("residual", "mean"), max_abs_z=("abs_z", "max"), mean_z=("z_score", "mean")
     )
 
     anomalies: list[dict[str, Any]] = []
     for date, row in daily.iterrows():
         if row["max_abs_z"] >= threshold:
             direction = "Surplus" if row["mean_residual"] > 0 else "Shortage"
-            anomalies.append({
-                "date": str(date),
-                "direction": direction,
-                "magnitude": float(row["mean_residual"]),
-                "zscore": float(row["mean_z"])
-            })
+            anomalies.append(
+                {
+                    "date": str(date),
+                    "direction": direction,
+                    "magnitude": float(row["mean_residual"]),
+                    "zscore": float(row["mean_z"]),
+                }
+            )
 
     return anomalies

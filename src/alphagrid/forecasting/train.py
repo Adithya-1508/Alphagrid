@@ -9,9 +9,15 @@ from sklearn.metrics import mean_absolute_error
 MODEL_DIR = Path("artifacts") / "models"
 TARGET = "wind_mw"
 FEATURES = [
-    "lag_24", "roll_mean_24", "roll_std_24", "roll_mean_168",
-    "wind_speed_lag_24", "temperature_lag_24",
-    "hour", "dayofweek", "month",
+    "lag_24",
+    "roll_mean_24",
+    "roll_std_24",
+    "roll_mean_168",
+    "wind_speed_lag_24",
+    "temperature_lag_24",
+    "hour",
+    "dayofweek",
+    "month",
 ]
 
 
@@ -33,12 +39,12 @@ def build_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
 def train_model(df: pd.DataFrame) -> float:
     feat_df = build_feature_matrix(df).dropna()
     if len(feat_df) < 50:
-        raise ValueError(f"Insufficient data to train. Need at least 50 samples, got {len(feat_df)}.")
-
+        raise ValueError(
+            f"Insufficient data to train. Need at least 50 samples, got {len(feat_df)}."
+        )
 
     X = feat_df[FEATURES]
     y = feat_df[TARGET]
-
 
     tscv = TimeSeriesSplit(n_splits=5)
     maes = []
@@ -55,7 +61,6 @@ def train_model(df: pd.DataFrame) -> float:
         maes.append(mean_absolute_error(y_val, preds))
         residuals.extend(y_val - preds)
 
-
     avg_mae = sum(maes) / len(maes)
     residual_std = pd.Series(residuals).std()
 
@@ -66,13 +71,12 @@ def train_model(df: pd.DataFrame) -> float:
     final_model.booster_.save_model(str(MODEL_DIR / "wind_model.txt"))
 
     metadata = {
-        "residual_std" : residual_std,
-        "mae" : avg_mae,
-        "features" : FEATURES,
-        "target" : TARGET,
+        "residual_std": residual_std,
+        "mae": avg_mae,
+        "features": FEATURES,
+        "target": TARGET,
     }
     with open(MODEL_DIR / "model_metadata.json", "w") as f:
         json.dump(metadata, f, indent=4)
 
-    return avg_mae    
-
+    return avg_mae

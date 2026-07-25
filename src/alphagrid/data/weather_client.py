@@ -17,7 +17,7 @@ def get_weather(start, end, lat: float | None = None, lon: float | None = None) 
             default_lon = weather_cfg.get("longitude", 10.0)
         except Exception:
             default_lat, default_lon = 50.0, 10.0
-        
+
         if lat is None:
             lat = default_lat
         if lon is None:
