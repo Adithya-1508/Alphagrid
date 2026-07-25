@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import json
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
-from .train import build_feature_matrix, MODEL_DIR, FEATURES
+
+from .train import FEATURES, MODEL_DIR, build_feature_matrix
 
 
 def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:

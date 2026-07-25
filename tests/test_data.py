@@ -1,9 +1,8 @@
 import pandas as pd
 import pytest
-from alphagrid.data.time_utils import to_utc
+
 from alphagrid.data.feature_store import generate_synthetic
-
-
+from alphagrid.data.time_utils import to_utc
 from alphagrid.forecasting.train import build_feature_matrix
 
 
@@ -82,6 +81,7 @@ def test_entsoe_empty_handling():
 
 def test_feature_store_resampling():
     from unittest.mock import patch
+
     from alphagrid.data.feature_store import build_features
 
     wind_idx = pd.date_range("2026-01-01T00:00:00Z", "2026-01-01T03:00:00Z", freq="15min", tz="UTC")

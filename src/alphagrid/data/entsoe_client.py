@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import os
+
 import pandas as pd
 from entsoe import EntsoePandasClient
-from .time_utils import to_utc
+
 from ..config import load_config
+from .time_utils import to_utc
 
 
 def get_wind_generation(start, end) -> pd.DataFrame:

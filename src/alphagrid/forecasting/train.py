@@ -1,10 +1,12 @@
 from __future__ import annotations
-import pandas as pd
+
 import json
-import lightgbm as lgb
 from pathlib import Path
-from sklearn.model_selection import TimeSeriesSplit
+
+import lightgbm as lgb
+import pandas as pd
 from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import TimeSeriesSplit
 
 MODEL_DIR = Path("artifacts") / "models"
 TARGET = "wind_mw"

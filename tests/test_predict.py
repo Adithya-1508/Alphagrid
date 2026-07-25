@@ -1,8 +1,9 @@
 import pandas as pd
 import pytest
+
 from alphagrid.data.feature_store import generate_synthetic
-from alphagrid.forecasting.train import train_model
 from alphagrid.forecasting.predict import predict_next_hours
+from alphagrid.forecasting.train import train_model
 
 
 @pytest.fixture(scope="module", autouse=True)

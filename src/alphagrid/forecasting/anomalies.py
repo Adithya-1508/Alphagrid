@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 from typing import Any
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 
 def detect_anomalies(

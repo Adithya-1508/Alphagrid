@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import pandas as pd
 import requests
-from .time_utils import to_utc
 
 from ..config import load_config
+from .time_utils import to_utc
 
 
 def get_weather(start, end, lat: float | None = None, lon: float | None = None) -> pd.DataFrame:
@@ -15,7 +16,7 @@ def get_weather(start, end, lat: float | None = None, lon: float | None = None) 
             weather_cfg = cfg.get("weather", {})
             default_lat = weather_cfg.get("latitude", 50.0)
             default_lon = weather_cfg.get("longitude", 10.0)
-        except Exception:
+        except Exception:  # noqa: BLE001
             default_lat, default_lon = 50.0, 10.0
 
         if lat is None:
@@ -33,7 +34,7 @@ def get_weather(start, end, lat: float | None = None, lon: float | None = None) 
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": ["wind_speed-10m", "temperature_2m"],
+        "hourly": ["wind_speed_10m", "temperature_2m"],
         "start_date": start_utc.strftime("%Y-%m-%d"),
         "end_date": end_utc.strftime("%Y-%m-%d"),
         "timezone": "UTC",
@@ -52,4 +53,5 @@ def get_weather(start, end, lat: float | None = None, lon: float | None = None) 
         }
     )
     df["time"] = pd.to_datetime(df["time"], utc=True)
-    return df.set_index("time").sort_index()
+    df.set_index("time", inplace=True)
+    return df

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from pathlib import Path
+
 import yaml
 
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
