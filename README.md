@@ -1,4 +1,4 @@
-# ⚡ AlphaGrid AI — Time-Series Grid Forecasting & Agentic Intelligence Platform
+# ⚡ AlphaGrid AI - Time-Series Grid Forecasting & Agentic Intelligence Platform
 
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Docker Support](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
