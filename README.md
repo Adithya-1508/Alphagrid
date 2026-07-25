@@ -146,6 +146,7 @@ alphagrid/
 │   ├── test_dashboard.py
 │   └── test_enhancements.py
 └── pyproject.toml              # Project dependencies, Ruff, & Mypy configurations
+```
 ## 🚀 Quick Start Guide
 
 ### Option A: Fast Local Environment Setup (`uv`)
