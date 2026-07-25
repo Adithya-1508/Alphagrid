@@ -170,7 +170,7 @@ Access the interactive trading portal at http://localhost:8501.
 ```
 ### Testing & Code Quality Assurance
 ```powershell
-The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell#
+The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:
 
 # 1. Execute full unit and integration test suite (22/22 passing)
 pytest
