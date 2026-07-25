@@ -106,9 +106,10 @@ except Exception:  # noqa: BLE001
     train_model(df)
     forecast_df = predict_next_hours(df, horizon_hours=24)
 
-# Detect Anomalies on Historical Data
+# Detect Anomalies on Historical Data vs Rolling Baseline
 actual_series = df["wind_mw"]
-anomalies = detect_anomalies(actual_series, actual_series, threshold=threshold)
+baseline_forecast = df["wind_mw"].rolling(24, min_periods=1).mean()
+anomalies = detect_anomalies(actual_series, baseline_forecast, threshold=threshold)
 
 # Metrics Bar
 col1, col2, col3, col4 = st.columns(4)
