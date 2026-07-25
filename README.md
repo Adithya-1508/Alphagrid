@@ -166,9 +166,9 @@ Option B: Docker Container Deployment
 # Build and spin up the complete application stack (Dashboard + Ollama)
 docker compose up --build
 Access the interactive trading portal at http://localhost:8501.
-
-```powershell
 ```
+```powershell
+
 Testing & Code Quality Assurance
 The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell#
 
@@ -185,5 +185,3 @@ ruff format --check .se.
 
 📜 License
 Distributed under the MIT License. See LICENSE for details.
-
- details.
