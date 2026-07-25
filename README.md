@@ -53,7 +53,59 @@ The platform bridges real-time physical power telemetry with multi-agent natural
 |  Cosine Sim >= 0.85)  |                    
 +-----------------------+
 ```
-🔬 Mathematical Formulations & Methodology1. Probabilistic Prediction IntervalRather than issuing single point forecasts, LightGBM fits quantile loss functions at $\alpha/2 = 0.05$ and $1 - \alpha/2 = 0.95$ to output a 90% confidence prediction band:$$\text{Confidence Band}_t = \left[ \hat{y}_{t, \, 0.05}, \; \hat{y}_{t, \, 0.95} \right]$$2. Residual Anomaly Z-ScoreSystemic imbalance days ("Surplus" vs "Shortage") are detected by calculating normalized residual deviations $e_t = y_t - \hat{y}_t$ over rolling time windows:$$Z_t = \frac{e_t - \mu_e}{\sigma_e}$$Anomalies are flagged when $\vert{}Z_t\vert{} \ge 2.0$, signaling abnormal weather shifts or transmission constraints.3. Embedding Cosine-Similarity GuardrailLLM-generated market thesis candidates $\mathbf{v}_{\text{llm}}$ are embedded via sentence-transformers (all-MiniLM-L6-v2) and compared against the grounded RAG context vector $\mathbf{u}_{\text{ctx}}$:$$S_{\cos}(\mathbf{u}_{\text{ctx}}, \mathbf{v}_{\text{llm}}) = \frac{\mathbf{u}_{\text{ctx}} \cdot \mathbf{v}_{\text{llm}}}{\Vert{}\mathbf{u}_{\text{ctx}}\Vert{} \Vert{}\mathbf{v}_{\text{llm}}\Vert{}} \ge 0.85$$Responses scoring $S_{\cos} < 0.85$ or failing Pydantic schema verification are automatically rejected and re-routed for deterministic fallback synthesis.✨ Key Technical CapabilitiesMulti-Bidding Zone Ingestion Pipeline (src/alphagrid/data/):Ingests actual wind/solar generation via ENTSO-E REST API and meteorological metrics via Open-Meteo across DE_LU, FR, NL, and DK_1.Enforces explicit UTC localization across all pandas DatetimeIndex objects to prevent offset mismatch errors.Caches raw telemetry locally as Parquet slices in artifacts/raw_cache/ to minimize external network overhead, featuring a deterministic synthetic data fallback generator.Probabilistic Forecasting & Optuna Engine (src/alphagrid/forecasting/):Automated Optuna hyperparameter optimization (tune.py) evaluating cross-validation Mean Absolute Error (MAE) across LightGBM regressors.Constructs rolling lag features, exponential moving averages, and time-series calendar embeddings.Generates 24-to-48 hour forecasts with prediction intervals and tracks daily residual Z-scores.Multi-Agent RAG & Debate Architecture (src/alphagrid/agents/):Bull vs. Bear Debate (debate_agent.py): Executes parallel prompt orchestration between a Bullish Agent (upside price/demand catalysts) and Bearish Agent (downside oversupply catalysts).Ingestion Agent: Strips raw HTML tags from energy news RSS feeds before chunking and embedding text into persistent ChromaDB collections (artifacts/chroma/).Mathematical Guardrail (guardrail.py): Enforces structured Pydantic validation (MarketThesis), verifies verbatim citation substrings, and validates cosine similarity ($S_{\cos} \ge 0.85$).Interactive Analytics & PDF Reporting (src/alphagrid/dashboard/):Built with Streamlit, Plotly, and fpdf2.Provides real-time bidding zone switching, interactive prediction band visualization, Optuna study execution inspection, and one-click Executive PDF Report generation.Production Docker Containerization (Dockerfile, docker-compose.yml):Multi-stage containerized architecture bundling the Python dashboard and Ollama LLM service for one-command orchestration (docker compose up).📁 Repository StructurePlaintextalphagrid/
+## 🔬 Mathematical Formulations & Methodology
+
+### 1. Probabilistic Prediction Interval
+Rather than issuing single point forecasts, LightGBM fits quantile loss functions at $\alpha/2 = 0.05$ and $1 - \alpha/2 = 0.95$ to output a **90% confidence prediction band**:
+
+$$\text{Confidence Band}_t = \left[ \hat{y}_{t, \, 0.05}, \, \hat{y}_{t, \, 0.95} \right]$$
+
+### 2. Residual Anomaly Z-Score
+Systemic imbalance days ("Surplus" vs "Shortage") are detected by calculating normalized residual deviations $e_t = y_t - \hat{y}_t$ over rolling time windows:
+
+$$Z_t = \frac{e_t - \mu_e}{\sigma_e}$$
+
+Anomalies are flagged when $\vert{}Z_t\vert{} \ge 2.0$, signaling abnormal weather shifts or transmission constraints.
+
+### 3. Embedding Cosine-Similarity Guardrail
+LLM-generated market thesis candidates $\mathbf{v}_{\text{llm}}$ are embedded via `sentence-transformers` (`all-MiniLM-L6-v2`) and compared against the grounded RAG context vector $\mathbf{u}_{\text{ctx}}$:
+
+$$S_{\cos}(\mathbf{u}_{\text{ctx}}, \mathbf{v}_{\text{llm}}) = \frac{\mathbf{u}_{\text{ctx}} \cdot \mathbf{v}_{\text{llm}}}{\Vert{}\mathbf{u}_{\text{ctx}}\Vert{} \Vert{}\mathbf{v}_{\text{llm}}\Vert{}} \ge 0.85$$
+
+Responses scoring $S_{\cos} < 0.85$ or failing Pydantic schema verification are automatically rejected and re-routed for deterministic fallback synthesis.
+
+---
+
+## ✨ Key Technical Capabilities
+
+1. **Multi-Bidding Zone Ingestion Pipeline (`src/alphagrid/data/`)**:
+   * Ingests actual wind/solar generation via **ENTSO-E REST API** and meteorological metrics via **Open-Meteo** across `DE_LU`, `FR`, `NL`, and `DK_1`.
+   * Enforces explicit UTC localization across all pandas `DatetimeIndex` objects to prevent offset mismatch errors.
+   * Caches raw telemetry locally as Parquet slices in `artifacts/raw_cache/` to minimize external network overhead, featuring a deterministic synthetic data fallback generator.
+
+2. **Probabilistic Forecasting & Optuna Engine (`src/alphagrid/forecasting/`)**:
+   * Automated **Optuna hyperparameter optimization** (`tune.py`) evaluating cross-validation Mean Absolute Error (MAE) across LightGBM regressors.
+   * Constructs rolling lag features, exponential moving averages, and time-series calendar embeddings.
+   * Generates 24-to-48 hour forecasts with prediction intervals and tracks daily residual Z-scores.
+
+3. **Multi-Agent RAG & Debate Architecture (`src/alphagrid/agents/`)**:
+   * **Bull vs. Bear Debate (`debate_agent.py`)**: Executes parallel prompt orchestration between a **Bullish Agent** (upside price/demand catalysts) and **Bearish Agent** (downside oversupply catalysts).
+   * **Ingestion Agent**: Strips raw HTML tags from energy news RSS feeds before chunking and embedding text into persistent **ChromaDB** collections (`artifacts/chroma/`).
+   * **Mathematical Guardrail (`guardrail.py`)**: Enforces structured Pydantic validation (`MarketThesis`), verifies verbatim citation substrings, and validates cosine similarity ($S_{\cos} \ge 0.85$).
+
+4. **Interactive Analytics & PDF Reporting (`src/alphagrid/dashboard/`)**:
+   * Built with Streamlit, Plotly, and `fpdf2`.
+   * Provides real-time bidding zone switching, interactive prediction band visualization, Optuna study execution inspection, and **one-click Executive PDF Report generation**.
+
+5. **Production Docker Containerization (`Dockerfile`, `docker-compose.yml`)**:
+   * Multi-stage containerized architecture bundling the Python dashboard and Ollama LLM service for one-command orchestration (`docker compose up`).
+
+---
+
+## 📁 Repository Structure
+
+```text
+alphagrid/
 ├── Dockerfile                  # Multi-stage Python 3.12 container image
 ├── docker-compose.yml          # Container orchestration (App + Ollama service)
 ├── .env                        # Local environment secrets (ENTSOE_TOKEN - GitIgnored)
