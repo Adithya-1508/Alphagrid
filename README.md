@@ -160,11 +160,15 @@ ENTSOE_TOKEN=your_entsoe_api_security_token_here
 
 # 3. Launch Streamlit Dashboard
 streamlit run src/alphagrid/dashboard/app.py
-
+```
+```powershell
+Option B: Docker Container Deployment
 # Build and spin up the complete application stack (Dashboard + Ollama)
 docker compose up --build
 Access the interactive trading portal at http://localhost:8501.
 
+```powershell
+```
 Testing & Code Quality Assurance
 The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:The codebase adheres to strict software engineering standards, fully verified via automated tests and static analysis:PowerShell#
 
