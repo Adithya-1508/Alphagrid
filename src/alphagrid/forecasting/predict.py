@@ -1,59 +1,95 @@
 from __future__ import annotations
 
-import json
-
-import lightgbm as lgb
-import numpy as np
+import joblib
 import pandas as pd
 
-from .train import FEATURES, MODEL_DIR, build_feature_matrix
+from .train import FEATURES, MODEL_DIR, QUANTILES
+
+
+def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
+    """
+    Generates out-of-sample probabilistic forecasts (P10, P50, P90).
+    """
+    if df.empty:
+        raise ValueError("Input DataFrame df cannot be empty.")
+
+    models = {}
+    for q in QUANTILES:
+        q_label = f"p{int(q * 100)}"
+        model_path = MODEL_DIR / f"lgb_model_{q_label}.pkl"
+        if not model_path.exists():
+            raise FileNotFoundError(
+                f"Model missing for {q_label}. Run train_quantile_models() first."
+            )
+        models[q_label] = joblib.load(model_path)
+
+    # Convert non-DatetimeIndex if necessary
+    hist = df.copy()
+    if not isinstance(hist.index, pd.DatetimeIndex):
+        hist.index = pd.to_datetime(hist.index, utc=True)
+    elif hist.index.tz is None:
+        hist.index = hist.index.tz_localize("UTC")
+
+    last_ts = hist.index[-1]
+    future_idx = pd.date_range(
+        last_ts + pd.Timedelta(hours=1), periods=horizon_hours, freq="h", tz="UTC"
+    )
+
+    preds_dict: dict[str, list[float]] = {"p10": [], "p50": [], "p90": []}
+
+    for ts in future_idx:
+        last_wind = hist["wind_mw"].iloc[-24]
+        last_speed_lag = hist["wind_speed_ms"].iloc[-24]
+        latest_speed = hist["wind_speed_ms"].iloc[-1]
+        latest_temp = hist["temperature_c"].iloc[-1]
+
+        feat_row = pd.DataFrame(
+            [
+                {
+                    "wind_speed_ms": latest_speed,
+                    "temperature_c": latest_temp,
+                    "lag_24": last_wind,
+                    "wind_speed_lag_24": last_speed_lag,
+                    "hour": ts.hour,
+                    "dayofweek": ts.dayofweek,
+                    "month": ts.month,
+                }
+            ],
+            index=[ts],
+        )[FEATURES]
+
+        p10_val = max(0.0, float(models["p10"].predict(feat_row)[0]))
+        p50_val = max(0.0, float(models["p50"].predict(feat_row)[0]))
+        p90_val = max(0.0, float(models["p90"].predict(feat_row)[0]))
+
+        # Non-crossing quantile adjustment
+        p10_clean = min(p10_val, p50_val)
+        p90_clean = max(p90_val, p50_val)
+
+        preds_dict["p10"].append(p10_clean)
+        preds_dict["p50"].append(p50_val)
+        preds_dict["p90"].append(p90_clean)
+
+        new_row = pd.DataFrame(
+            {
+                "wind_mw": [p50_val],
+                "wind_speed_ms": [latest_speed],
+                "temperature_c": [latest_temp],
+            },
+            index=[ts],
+        )
+        hist = pd.concat([hist, new_row])
+
+    out = pd.DataFrame(preds_dict, index=future_idx)
+    # Backward-compatible column aliases
+    out["forecast"] = out["p50"]
+    out["lower_bound"] = out["p10"]
+    out["upper_bound"] = out["p90"]
+    return out
 
 
 def predict_next_hours(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
     """
-    Loads the trained model, constructs out-of-sample features,
-    and returns point forecasts alongside a 90% confidence interval.
+    Wrapper function maintaining compatibility with existing Dashboard API.
     """
-    if df.empty:
-        raise ValueError("Input DataFrame df cannot be empty.")
-    if len(df) < 24:
-        raise ValueError(
-            f"Input DataFrame must contain at least 24 rows of historical data, got {len(df)}."
-        )
-
-    model_path = MODEL_DIR / "wind_model.txt"
-    meta_path = MODEL_DIR / "model_metadata.json"
-    if not model_path.exists() or not meta_path.exists():
-        raise FileNotFoundError("Trained model or metadata not found. Run train_model first.")
-
-    model = lgb.Booster(model_file=str(model_path))
-    with open(meta_path, "r") as f:
-        metadata = json.load(f)
-    residual_std = metadata["residual_std"]
-
-    if not isinstance(df.index, pd.DatetimeIndex):
-        df = df.copy()
-        df.index = pd.DatetimeIndex(df.index)
-
-    assert isinstance(df.index, pd.DatetimeIndex)
-    last_dt = df.index[-1]
-    future_index = pd.date_range(
-        start=last_dt + pd.Timedelta(hours=1), periods=horizon_hours, freq="h", tz=df.index.tz
-    )
-
-    future_df = pd.DataFrame(index=future_index, columns=df.columns, dtype=float)
-    combined_df = pd.concat([df, future_df])
-
-    feat_df = build_feature_matrix(combined_df)
-    future_feat = feat_df.loc[future_index]
-
-    X_future = future_feat[FEATURES].astype(float)
-    predictions = model.predict(X_future)
-
-    lower_bound = np.clip(predictions - 1.645 * residual_std, 0, None)
-    upper_bound = predictions + 1.645 * residual_std
-
-    return pd.DataFrame(
-        {"forecast": predictions, "lower_bound": lower_bound, "upper_bound": upper_bound},
-        index=future_index,
-    )
+    return predict_quantile_forecasts(df, horizon_hours=horizon_hours)

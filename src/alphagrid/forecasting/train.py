@@ -1,84 +1,103 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
+from typing import Any
 
+import joblib
 import lightgbm as lgb
+import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import TimeSeriesSplit
 
 MODEL_DIR = Path("artifacts") / "models"
-TARGET = "wind_mw"
 FEATURES = [
+    "wind_speed_ms",
+    "temperature_c",
     "lag_24",
-    "roll_mean_24",
-    "roll_std_24",
-    "roll_mean_168",
     "wind_speed_lag_24",
-    "temperature_lag_24",
     "hour",
     "dayofweek",
     "month",
 ]
+QUANTILES = [0.10, 0.50, 0.90]
+
+
+def _prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+    df_feat = df.copy()
+    df_feat["lag_24"] = df_feat["wind_mw"].shift(24)
+    df_feat["wind_speed_lag_24"] = df_feat["wind_speed_ms"].shift(24)
+    assert isinstance(df_feat.index, pd.DatetimeIndex)
+    df_feat["hour"] = df_feat.index.hour
+    df_feat["dayofweek"] = df_feat.index.dayofweek
+    df_feat["month"] = df_feat.index.month
+    return df_feat.dropna()
 
 
 def build_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df["lag_24"] = df[TARGET].shift(24)
-    df["roll_mean_24"] = df[TARGET].shift(1).rolling(24).mean()
-    df["roll_std_24"] = df[TARGET].shift(1).rolling(24).std()
-    df["roll_mean_168"] = df[TARGET].shift(1).rolling(168).mean()
-    df["wind_speed_lag_24"] = df["wind_speed_ms"].shift(24)
-    df["temperature_lag_24"] = df["temperature_c"].shift(24)
-    idx = pd.DatetimeIndex(df.index)
-    df["hour"] = idx.hour
-    df["dayofweek"] = idx.dayofweek
-    df["month"] = idx.month
-    return df
+    """Backward compatibility alias for feature preparation."""
+    return _prepare_features(df)
+
+
+def compute_pinball_loss(y_true: np.ndarray, y_pred: Any, alpha: float) -> float:
+    """Computes Pinball (Quantile) Loss for a given quantile alpha."""
+    pred_arr = np.asarray(y_pred, dtype=np.float64)
+    err = y_true - pred_arr
+    return float(np.mean(np.maximum(alpha * err, (alpha - 1) * err)))
+
+
+def train_quantile_models(df: pd.DataFrame) -> dict[str, float]:
+    """
+    Trains 3 separate LightGBM models for P10, P50, and P90 quantile forecasts.
+    Returns average validation Pinball Loss dictionary.
+    """
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    prepared = _prepare_features(df)
+    if prepared.empty:
+        raise ValueError("DataFrame contains insufficient history for quantile training.")
+
+    X = prepared[FEATURES]
+    y = prepared["wind_mw"]
+
+    tscv = TimeSeriesSplit(n_splits=5)
+    quantile_metrics: dict[str, float] = {}
+
+    for q in QUANTILES:
+        q_label = f"p{int(q * 100)}"
+        params = {
+            "objective": "quantile",
+            "alpha": q,
+            "metric": "quantile",
+            "boosting_type": "gbdt",
+            "n_estimators": 150,
+            "learning_rate": 0.05,
+            "num_leaves": 31,
+            "random_state": 42,
+            "verbosity": -1,
+        }
+
+        scores = []
+        for train_idx, val_idx in tscv.split(X):
+            X_tr, X_va = X.iloc[train_idx], X.iloc[val_idx]
+            y_tr, y_va = y.iloc[train_idx], y.iloc[val_idx]
+
+            ds_tr = lgb.Dataset(X_tr, label=y_tr)
+            booster = lgb.train(params, ds_tr, num_boost_round=150)
+            preds = booster.predict(X_va)
+
+            p_loss = compute_pinball_loss(y_va.to_numpy(), preds, alpha=q)
+            scores.append(p_loss)
+
+        # Train final model on full dataset
+        ds_full = lgb.Dataset(X, label=y)
+        final_model = lgb.train(params, ds_full, num_boost_round=150)
+        joblib.dump(final_model, MODEL_DIR / f"lgb_model_{q_label}.pkl")
+
+        quantile_metrics[f"pinball_loss_{q_label}"] = float(np.mean(scores))
+
+    return quantile_metrics
 
 
 def train_model(df: pd.DataFrame) -> float:
-    feat_df = build_feature_matrix(df).dropna()
-    if len(feat_df) < 50:
-        raise ValueError(
-            f"Insufficient data to train. Need at least 50 samples, got {len(feat_df)}."
-        )
-
-    X = feat_df[FEATURES]
-    y = feat_df[TARGET]
-
-    tscv = TimeSeriesSplit(n_splits=5)
-    maes = []
-    residuals = []
-
-    for train_idx, val_idx in tscv.split(X):
-        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-        y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
-
-        model = lgb.LGBMRegressor(random_state=42, verbose=-1)
-        model.fit(X_train, y_train)
-
-        preds = model.predict(X_val)
-        maes.append(mean_absolute_error(y_val, preds))
-        residuals.extend(y_val - preds)
-
-    avg_mae = sum(maes) / len(maes)
-    residual_std = pd.Series(residuals).std()
-
-    final_model = lgb.LGBMRegressor(random_state=42, verbose=-1)
-    final_model.fit(X, y)
-
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    final_model.booster_.save_model(str(MODEL_DIR / "wind_model.txt"))
-
-    metadata = {
-        "residual_std": residual_std,
-        "mae": avg_mae,
-        "features": FEATURES,
-        "target": TARGET,
-    }
-    with open(MODEL_DIR / "model_metadata.json", "w") as f:
-        json.dump(metadata, f, indent=4)
-
-    return avg_mae
+    """Backward compatibility wrapper returning P50 validation score."""
+    metrics = train_quantile_models(df)
+    return metrics.get("pinball_loss_p50", 0.0)

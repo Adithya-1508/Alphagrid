@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import pandas as pd
 import pytest
 
 from alphagrid.data.feature_store import generate_synthetic
-from alphagrid.forecasting.predict import predict_next_hours
+from alphagrid.forecasting.predict import predict_next_hours, predict_quantile_forecasts
 from alphagrid.forecasting.train import train_model
 
 
@@ -18,7 +20,9 @@ def test_predict_datetime_index():
     res = predict_next_hours(df)
     assert isinstance(res, pd.DataFrame)
     assert len(res) == 24
-    assert list(res.columns) == ["forecast", "lower_bound", "upper_bound"]
+    assert set(["forecast", "lower_bound", "upper_bound", "p10", "p50", "p90"]).issubset(
+        res.columns
+    )
     assert isinstance(res.index, pd.DatetimeIndex)
 
 
@@ -44,3 +48,10 @@ def test_predict_plain_index_timestamps():
     assert isinstance(res, pd.DataFrame)
     assert len(res) == 24
     assert isinstance(res.index, pd.DatetimeIndex)
+
+
+def test_quantile_ordering():
+    df = generate_synthetic("2026-01-21", "2026-01-23")
+    res = predict_quantile_forecasts(df, horizon_hours=24)
+    assert (res["p10"] <= res["p50"]).all()
+    assert (res["p50"] <= res["p90"]).all()
