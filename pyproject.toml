@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "catboost>=1.2.10",
     "chromadb>=1.5.9",
     "entsoe-py>=0.8.0",
     "fastapi>=0.139.0",
@@ -28,12 +29,13 @@ dependencies = [
     "sentence-transformers>=5.6.0",
     "streamlit>=1.59.1",
     "uvicorn>=0.51.0",
+    "xgboost>=3.3.0",
 ]
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy"]
 test = ["pytest"]
-ml = ["lightgbm", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests", "optuna"]
+ml = ["lightgbm", "xgboost", "catboost", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests", "optuna"]
 
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]
