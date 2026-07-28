@@ -7,9 +7,7 @@ import pandas as pd
 from scipy.stats import ks_2samp
 
 
-def calculate_psi(
-    reference: np.ndarray, current: np.ndarray, num_buckets: int = 10
-) -> float:
+def calculate_psi(reference: np.ndarray, current: np.ndarray, num_buckets: int = 10) -> float:
     """Calculates Population Stability Index (PSI) between reference and current distributions."""
     ref = reference[~np.isnan(reference)]
     cur = current[~np.isnan(current)]
@@ -40,7 +38,7 @@ def detect_data_drift(
 ) -> dict[str, Any]:
     """
     Detects feature-level data drift using Kolmogorov-Smirnov (KS) test and PSI.
-    
+
     Returns:
         Dictionary detailing overall drift status and feature metrics.
     """
