@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 
 MODEL_DIR = Path("artifacts") / "models"
-FEATURES = [
+BASE_FEATURES = [
     "wind_speed_ms",
     "temperature_c",
     "lag_24",
@@ -19,7 +19,18 @@ FEATURES = [
     "dayofweek",
     "month",
 ]
+PRICE_FEATURES = ["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]
+FEATURES = BASE_FEATURES
 QUANTILES = [0.10, 0.50, 0.90]
+
+
+def get_active_features(df: pd.DataFrame) -> list[str]:
+    """Returns active feature list based on available columns in DataFrame."""
+    active = list(BASE_FEATURES)
+    for pf in PRICE_FEATURES:
+        if pf in df.columns and pf not in active:
+            active.append(pf)
+    return active
 
 
 def _prepare_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -55,7 +66,8 @@ def train_quantile_models(df: pd.DataFrame) -> dict[str, float]:
     if prepared.empty:
         raise ValueError("DataFrame contains insufficient history for quantile training.")
 
-    X = prepared[FEATURES]
+    active_feats = get_active_features(prepared)
+    X = prepared[active_feats]
     y = prepared["wind_mw"]
 
     tscv = TimeSeriesSplit(n_splits=5)
