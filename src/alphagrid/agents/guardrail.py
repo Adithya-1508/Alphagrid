@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -17,13 +17,43 @@ class MarketThesis(BaseModel):
     reasoning: str = Field(description="Synthesized market rationale")
 
 
-_EMBEDDER: SentenceTransformer | None = None
+class FallbackEmbedder:
+    """Fallback n-gram embedder when HuggingFace Hub returns 429 Rate Limit or network errors."""
+
+    def encode(self, texts: str | list[str], convert_to_numpy: bool = True) -> np.ndarray:
+        if isinstance(texts, str):
+            text_list = [texts]
+            is_single = True
+        else:
+            text_list = list(texts)
+            is_single = False
+
+        vecs = []
+        for text in text_list:
+            words = set(str(text).lower().split())
+            vec = np.zeros(128, dtype=np.float32)
+            for w in words:
+                idx = abs(hash(w)) % 128
+                vec[idx] += 1.0
+            norm = np.linalg.norm(vec)
+            if norm > 0:
+                vec = vec / norm
+            vecs.append(vec)
+
+        res = np.array(vecs)
+        return res[0] if is_single else res
 
 
-def get_embedder() -> SentenceTransformer:
+_EMBEDDER: Any = None
+
+
+def get_embedder() -> Any:
     global _EMBEDDER
     if _EMBEDDER is None:
-        _EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2")
+        try:
+            _EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception:  # noqa: BLE001
+            _EMBEDDER = FallbackEmbedder()
     return _EMBEDDER
 
 
