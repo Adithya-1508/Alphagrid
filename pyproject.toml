@@ -15,6 +15,7 @@ dependencies = [
     "feedparser>=6.0.12",
     "fpdf2>=2.8.7",
     "lightgbm>=4.6.0",
+    "networkx>=3.0",
     "numpy>=2.5.1",
     "ollama>=0.6.2",
     "openmeteo-requests>=1.7.5",
@@ -35,7 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["ruff", "mypy"]
 test = ["pytest"]
-ml = ["lightgbm", "xgboost", "catboost", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests", "optuna"]
+ml = ["lightgbm", "xgboost", "catboost", "scikit-learn", "sentence-transformers", "entsoe-py", "openmeteo-requests", "optuna", "networkx"]
 
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]
@@ -48,5 +49,6 @@ line-length = 100
 select = ["E", "F", "I", "SIM", "BLE"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 ignore_missing_imports = true
+warn_unused_configs = true
