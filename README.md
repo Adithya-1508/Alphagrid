@@ -21,7 +21,7 @@ The platform bridges real-time physical power telemetry with multi-agent natural
 ## 🎯 Trading Edge & Commercial Use Cases
 
 1. **Renewable Imbalance & Dunkelflaute Forecasting:** Detects sudden wind generation drop-offs across Central European bidding zones, enabling intraday traders to position against physical grid shortfalls before imbalance settlement prices spike.
-2. **Inter-Zone Flow & Congestion Arbitrage:** Evaluates cross-border HVDC/AC transmission limits and regional supply-demand divergence between neighboring zones ($\text{DE\_LU} \leftrightarrow \text{FR}$, $\text{NL}$, $\text{DK1}$).
+2. **Inter-Zone Flow & Congestion Arbitrage:** Evaluates cross-border HVDC/AC transmission limits and regional supply-demand divergence between neighboring zones (e.g., `DE_LU` ↔ `FR`).
 3. **Automated REMIT Market Intelligence:** Ingests unstructured energy market news and REMIT Urgent Market Messages (UMMs), extracting asset trip capacities and parsing market sentiment without manual review.
 4. **Deterministic Tail-Risk Guardrails:** Ensures automated market summaries cite exact source substrings and pass strict semantic embedding thresholds before reaching trading desk executives.
 5. **Monte Carlo Stochastic Stress Testing:** Simulates 1,000+ extreme weather and outage paths under Dunkelflaute, Heatwave, and Baseload trip scenarios to calculate Value-at-Risk ($95\%$ VaR) and spot price spikes.
