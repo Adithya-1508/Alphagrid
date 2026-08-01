@@ -28,7 +28,7 @@ The platform bridges real-time physical power telemetry with multi-agent natural
 
 ---
 
-## 🏗️ Complete 14-Level Architecture Overview
+## 🏗️ Architecture Overview
 
 ```text
                             +---------------------------+
@@ -89,22 +89,22 @@ Responses scoring $S_{\cos} < 0.85$ or failing Pydantic schema verification are 
 
 ---
 
-## ✨ Comprehensive 14-Level Platform Capabilities
+## ✨ Key Technical Capabilities
 
-1. **Level 1 — Statistical Data Drift Engine (`drift.py`)**: Population Stability Index (PSI) & Kolmogorov-Smirnov distribution drift monitoring.
-2. **Level 2 — European Energy Market Features (`market_prices.py`)**: EEX day-ahead power prices, TTF gas, and EU ETS carbon allowance pricing models.
-3. **Level 3 — Agent Reflection & SQLite Long-Term Memory (`memory_store.py`)**: Persistent SQLite memory store tracking past trade outcomes and agent self-corrections.
-4. **Level 4 — Knowledge Graph RAG (`graph_rag.py`)**: NetworkX entity-relationship graph linking bidding zones, interconnectors, and power stations with ChromaDB vector search.
-5. **Level 5 — Backtest Simulation & Algorithmic Trading Desk (`backtest.py`)**: Realistic trade simulation calculating PnL (€), Sharpe Ratio, Max Drawdown %, 95% VaR, and Win Rate.
-6. **Level 6 — Model Explainability (`explainability.py`)**: SHAP-inspired feature attribution breaking down model prediction drivers.
-7. **Level 7 — Real-Time Event Streaming (`event_stream.py`)**: Async pub/sub event broker handling real-time telemetry updates.
-8. **Level 8 — Conformal Prediction (`conformal.py`)**: Calibrated distribution-free non-conformity score bounds guaranteeing coverage.
-9. **Level 9 — Deep Learning Sequence Models (`sequence_models.py`)**: Auto-regressive sequence models for multi-horizon generation forecasting.
-10. **Level 10 — Automated Feature Store (`feast_store.py`)**: Point-in-time offline feature joins & online low-latency materialization store.
-11. **Level 11 — Multi-Grid Interconnector Power Flow Model (`interconnectors.py`)**: Cross-border transmission capacity and congestion spread solver.
-12. **Level 12 — Scenario Engine & Monte Carlo Stress Testing (`scenario_engine.py`)**: Stochastic Dunkelflaute, Heatwave, and Outage path simulation.
-13. **Level 13 — Continuous Retraining & MLOps Pipeline (`mlops_pipeline.py`)**: Automated drift monitoring and model retraining orchestrator.
-14. **Level 14 — Enterprise Risk Dashboard & Institutional Export Center (`app.py`)**: Tabbed Streamlit trading floor application with executive PDF reporting.
+1. **Statistical Data Drift Engine (`drift.py`)**: Population Stability Index (PSI) & Kolmogorov-Smirnov distribution drift monitoring.
+2. **European Energy Market Features (`market_prices.py`)**: EEX day-ahead power prices, TTF gas, and EU ETS carbon allowance pricing models.
+3. **Agent Reflection & SQLite Long-Term Memory (`memory_store.py`)**: Persistent SQLite memory store tracking past trade outcomes and agent self-corrections.
+4. **Knowledge Graph RAG (`graph_rag.py`)**: NetworkX entity-relationship graph linking bidding zones, interconnectors, and power stations with ChromaDB vector search.
+5. **Backtest Simulation & Algorithmic Trading Desk (`backtest.py`)**: Realistic trade simulation calculating PnL (€), Sharpe Ratio, Max Drawdown %, 95% VaR, and Win Rate.
+6. **Model Explainability (`explainability.py`)**: SHAP-inspired feature attribution breaking down model prediction drivers.
+7. **Real-Time Event Streaming (`event_stream.py`)**: Async pub/sub event broker handling real-time telemetry updates.
+8. **Conformal Prediction (`conformal.py`)**: Calibrated distribution-free non-conformity score bounds guaranteeing coverage.
+9. **Deep Learning Sequence Models (`sequence_models.py`)**: Auto-regressive sequence models for multi-horizon generation forecasting.
+10. **Automated Feature Store (`feast_store.py`)**: Point-in-time offline feature joins & online low-latency materialization store.
+11. **Multi-Grid Interconnector Power Flow Model (`interconnectors.py`)**: Cross-border transmission capacity and congestion spread solver.
+12. **Scenario Engine & Monte Carlo Stress Testing (`scenario_engine.py`)**: Stochastic Dunkelflaute, Heatwave, and Outage path simulation.
+13. **Continuous Retraining & MLOps Pipeline (`mlops_pipeline.py`)**: Automated drift monitoring and model retraining orchestrator.
+14. **Enterprise Risk Dashboard & Institutional Export Center (`app.py`)**: Tabbed Streamlit trading floor application with executive PDF reporting.
 
 ---
 
