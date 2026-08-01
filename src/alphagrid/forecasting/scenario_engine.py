@@ -37,6 +37,7 @@ def run_monte_carlo_scenarios(
 
     base_wind = float(df["wind_mw"].iloc[-1]) if "wind_mw" in df.columns else 5000.0
     rng = np.random.default_rng(42)
+    max_capacity_mw = 10000.0
 
     # Apply shock multipliers based on scenario
     if scenario == "Dunkelflaute":
@@ -57,22 +58,24 @@ def run_monte_carlo_scenarios(
         risk_level = "NORMAL"
 
     paths: list[list[float]] = []
-    final_values: list[float] = []
 
     for _ in range(num_simulations):
         path = []
         val = base_wind * shock_mult
         for h in range(horizon_hours):
             shock = rng.normal(0, volatility)
-            val = max(0.0, val + shock + 50.0 * np.sin(h))
+            val = max(0.0, min(max_capacity_mw, val + shock + 50.0 * np.sin(h)))
             path.append(round(val, 2))
         paths.append(path)
-        final_values.extend(path)
 
-    arr = np.array(final_values)
-    mean_val = float(np.mean(arr))
-    p05 = float(np.percentile(arr, 5))
-    p95 = float(np.percentile(arr, 95))
+    paths_arr = np.array(paths)
+    mean_path = np.mean(paths_arr, axis=0)
+    p05_path = np.percentile(paths_arr, 5, axis=0)
+    p95_path = np.percentile(paths_arr, 95, axis=0)
+
+    mean_val = float(np.mean(mean_path))
+    p05 = float(np.min(p05_path))
+    p95 = float(np.max(p95_path))
 
     # Spot price spike estimation based on deficit severity
     price_spike = float(max(50.0, 300.0 * (1.0 - (p05 / max(1.0, mean_val)))))

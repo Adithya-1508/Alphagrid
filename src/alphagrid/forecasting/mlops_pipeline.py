@@ -29,8 +29,17 @@ def check_and_trigger_retrain(
         active_feats = ["wind_speed_ms", "temperature_c"]
 
     drift_report = detect_data_drift(ref_df, curr_df, active_feats)
-    is_drifted = bool(drift_report.get("is_drifted", False)) or force_retrain
-    drifted_feats = list(drift_report.get("drifted_features", []))
+    is_drifted = bool(drift_report.get("drift_detected", False)) or force_retrain
+
+    reports = drift_report.get("feature_reports", {})
+    if isinstance(reports, dict):
+        drifted_feats = [
+            feat
+            for feat, rep in reports.items()
+            if isinstance(rep, dict) and rep.get("drift_detected", False)
+        ]
+    else:
+        drifted_feats = []
 
     if not is_drifted:
         return RetrainStatus(

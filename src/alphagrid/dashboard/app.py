@@ -151,13 +151,14 @@ if ingest_clicked:
 # Generate Predictions & Detect Anomalies
 try:
     forecast_df = predict_next_hours(df, horizon_hours=24)
-except Exception:  # noqa: BLE001
+except Exception as exc:  # noqa: BLE001
+    st.warning(f"Model prediction fallback triggered: {exc}")
     train_model(df)
     forecast_df = predict_next_hours(df, horizon_hours=24)
 
-# Detect Anomalies on Historical Data vs Rolling Baseline
+# Detect Anomalies on Historical Data vs Rolling Baseline (Shifted to eliminate lookahead bias)
 actual_series = df["wind_mw"]
-baseline_forecast = df["wind_mw"].rolling(24, min_periods=1).mean()
+baseline_forecast = df["wind_mw"].shift(1).rolling(24, min_periods=1).mean().bfill()
 anomalies = detect_anomalies(actual_series, baseline_forecast, threshold=threshold)
 
 # Backtest Trading Strategy Metrics
