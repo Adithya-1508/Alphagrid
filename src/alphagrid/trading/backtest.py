@@ -42,11 +42,13 @@ def run_backtest(
     p10 = df_predictions.get("p10", p50 * 0.9)
     p90 = df_predictions.get("p90", p50 * 1.1)
 
-    prices = df_features.get("day_ahead_price_eur_mwh", pd.Series(60.0, index=df_predictions.index))
+    prices = df_features.get(
+        "day_ahead_price_eur_mwh", pd.Series(60.0, index=df_predictions.index)
+    )
 
-    # Reindex prices to align with forecast horizon
-    aligned_prices = prices.reindex(df_predictions.index).ffill().bfill()
-    median_gen = float(p50.median())
+    # Reindex prices to align with forecast horizon, filling NaN with default price 60.0 EUR/MWh
+    aligned_prices = prices.reindex(df_predictions.index).ffill().bfill().fillna(60.0)
+    median_gen = float(p50.median()) if pd.notna(p50.median()) else 0.0
 
     capital = initial_capital_eur
     equity_curve = [capital]
@@ -54,12 +56,17 @@ def run_backtest(
     hourly_pnls: list[float] = []
 
     for ts, gen in p50.items():
-        price = float(aligned_prices.loc[ts]) if ts in aligned_prices.index else 60.0
-        unc = float(p90.loc[ts] - p10.loc[ts]) if ts in p90.index else 1000.0
+        raw_price = aligned_prices.loc[ts] if ts in aligned_prices.index else 60.0
+        price = float(raw_price) if pd.notna(raw_price) else 60.0
+
+        p10_val = float(p10.loc[ts]) if ts in p10.index and pd.notna(p10.loc[ts]) else gen * 0.9
+        p90_val = float(p90.loc[ts]) if ts in p90.index and pd.notna(p90.loc[ts]) else gen * 1.1
+        unc = max(0.0, p90_val - p10_val)
+
         # Position sizing scaled by inverse uncertainty
         size_mw = max_capacity_mw * (1.0 / (1.0 + unc / 2000.0))
 
-        if gen > median_gen:
+        if float(gen) > median_gen:
             # Over-supply expected -> Short power position
             pnl = size_mw * (price - 50.0)  # Arbitrage vs baseline 50 EUR/MWh
             action = "SHORT"
@@ -67,6 +74,9 @@ def run_backtest(
             # Under-supply expected -> Long power position
             pnl = size_mw * (70.0 - price)
             action = "LONG"
+
+        if np.isnan(pnl):
+            pnl = 0.0
 
         capital += pnl
         equity_curve.append(capital)
@@ -102,8 +112,8 @@ def run_backtest(
     # Max Drawdown
     eq_arr = np.array(equity_curve)
     peak = np.maximum.accumulate(eq_arr)
-    drawdown = (peak - eq_arr) / peak
-    max_dd = float(drawdown.max() * 100.0)
+    drawdown = np.where(peak > 0, (peak - eq_arr) / peak, 0.0)
+    max_dd = float(drawdown.max() * 100.0) if len(drawdown) > 0 else 0.0
 
     # Value-at-Risk (95% confidence level)
     var_95 = float(np.percentile(pnls_arr, 5)) if len(pnls_arr) > 0 else 0.0
