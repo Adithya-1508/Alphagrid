@@ -45,6 +45,8 @@ def check_ollama_status() -> bool:
 def generate_completion(prompt: str, system_prompt: str | None = None) -> str:
     """
     Sends a prompt to Ollama with temperature=0 for deterministic outputs.
+    Catches Ollama OOM, connection, or status errors and returns empty string
+    so downstream agents can execute deterministic fallbacks safely.
     """
     cfg = get_llm_config()
     messages = []
@@ -52,9 +54,13 @@ def generate_completion(prompt: str, system_prompt: str | None = None) -> str:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    response = ollama.chat(
-        model=cfg["model"],
-        messages=messages,
-        options={"temperature": cfg["temperature"]},
-    )
-    return str(response["message"]["content"])
+    try:
+        response = ollama.chat(
+            model=cfg["model"],
+            messages=messages,
+            options={"temperature": cfg["temperature"]},
+        )
+        return str(response["message"]["content"])
+    except Exception as err:  # noqa: BLE001
+        print(f"[Ollama Warning] LLM generation unavailable: {err}")
+        return ""
