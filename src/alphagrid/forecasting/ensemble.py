@@ -9,7 +9,7 @@ import xgboost as xgb
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import TimeSeriesSplit
 
-from .train import FEATURES, MODEL_DIR, _prepare_features
+from .train import MODEL_DIR, _prepare_features, get_active_features
 
 
 def train_ensemble_models(df: pd.DataFrame) -> dict[str, float]:
@@ -22,7 +22,8 @@ def train_ensemble_models(df: pd.DataFrame) -> dict[str, float]:
     if prepared.empty:
         raise ValueError("DataFrame contains insufficient history for ensemble training.")
 
-    X = prepared[FEATURES]
+    active_feats = get_active_features(prepared)
+    X = prepared[active_feats]
     y = prepared["wind_mw"]
 
     tscv = TimeSeriesSplit(n_splits=5)
@@ -92,6 +93,7 @@ def predict_ensemble(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
     elif hist.index.tz is None:
         hist.index = hist.index.tz_localize("UTC")
 
+    active_feats = get_active_features(hist)
     last_ts = hist.index[-1]
     future_idx = pd.date_range(
         last_ts + pd.Timedelta(hours=1), periods=horizon_hours, freq="h", tz="UTC"
@@ -105,20 +107,20 @@ def predict_ensemble(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
         latest_speed = hist["wind_speed_ms"].iloc[-1]
         latest_temp = hist["temperature_c"].iloc[-1]
 
-        feat_row = pd.DataFrame(
-            [
-                {
-                    "wind_speed_ms": latest_speed,
-                    "temperature_c": latest_temp,
-                    "lag_24": last_wind,
-                    "wind_speed_lag_24": last_speed_lag,
-                    "hour": ts.hour,
-                    "dayofweek": ts.dayofweek,
-                    "month": ts.month,
-                }
-            ],
-            index=[ts],
-        )[FEATURES]
+        row_dict = {
+            "wind_speed_ms": latest_speed,
+            "temperature_c": latest_temp,
+            "lag_24": last_wind,
+            "wind_speed_lag_24": last_speed_lag,
+            "hour": ts.hour,
+            "dayofweek": ts.dayofweek,
+            "month": ts.month,
+        }
+        for pf in ["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]:
+            if pf in hist.columns:
+                row_dict[pf] = hist[pf].iloc[-1]
+
+        feat_row = pd.DataFrame([row_dict], index=[ts])[active_feats]
 
         p_lgb = float(m_lgb.predict(feat_row)[0])
         p_xgb = float(m_xgb.predict(feat_row)[0])
@@ -128,14 +130,16 @@ def predict_ensemble(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
         blend_val = max(0.0, float(meta.predict(base_preds)[0]))
         preds.append(blend_val)
 
-        new_row = pd.DataFrame(
-            {
-                "wind_mw": [blend_val],
-                "wind_speed_ms": [latest_speed],
-                "temperature_c": [latest_temp],
-            },
-            index=[ts],
-        )
+        new_data = {
+            "wind_mw": [blend_val],
+            "wind_speed_ms": [latest_speed],
+            "temperature_c": [latest_temp],
+        }
+        for pf in ["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]:
+            if pf in hist.columns:
+                new_data[pf] = [hist[pf].iloc[-1]]
+
+        new_row = pd.DataFrame(new_data, index=[ts])
         hist = pd.concat([hist, new_row])
 
     return pd.DataFrame({"forecast": preds}, index=future_idx)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import joblib
 import pandas as pd
 
-from .train import FEATURES, MODEL_DIR, QUANTILES
+from .train import MODEL_DIR, QUANTILES, get_active_features
 
 
 def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
@@ -30,6 +30,7 @@ def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.
     elif hist.index.tz is None:
         hist.index = hist.index.tz_localize("UTC")
 
+    active_feats = get_active_features(hist)
     last_ts = hist.index[-1]
     future_idx = pd.date_range(
         last_ts + pd.Timedelta(hours=1), periods=horizon_hours, freq="h", tz="UTC"
@@ -43,20 +44,22 @@ def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.
         latest_speed = hist["wind_speed_ms"].iloc[-1]
         latest_temp = hist["temperature_c"].iloc[-1]
 
-        feat_row = pd.DataFrame(
-            [
-                {
-                    "wind_speed_ms": latest_speed,
-                    "temperature_c": latest_temp,
-                    "lag_24": last_wind,
-                    "wind_speed_lag_24": last_speed_lag,
-                    "hour": ts.hour,
-                    "dayofweek": ts.dayofweek,
-                    "month": ts.month,
-                }
-            ],
-            index=[ts],
-        )[FEATURES]
+        row_dict = {
+            "wind_speed_ms": latest_speed,
+            "temperature_c": latest_temp,
+            "lag_24": last_wind,
+            "wind_speed_lag_24": last_speed_lag,
+            "hour": ts.hour,
+            "dayofweek": ts.dayofweek,
+            "month": ts.month,
+        }
+
+        # Include market price features if present
+        for pf in ["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]:
+            if pf in hist.columns:
+                row_dict[pf] = hist[pf].iloc[-1]
+
+        feat_row = pd.DataFrame([row_dict], index=[ts])[active_feats]
 
         p10_val = max(0.0, float(models["p10"].predict(feat_row)[0]))
         p50_val = max(0.0, float(models["p50"].predict(feat_row)[0]))
@@ -70,14 +73,16 @@ def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.
         preds_dict["p50"].append(p50_val)
         preds_dict["p90"].append(p90_clean)
 
-        new_row = pd.DataFrame(
-            {
-                "wind_mw": [p50_val],
-                "wind_speed_ms": [latest_speed],
-                "temperature_c": [latest_temp],
-            },
-            index=[ts],
-        )
+        new_data = {
+            "wind_mw": [p50_val],
+            "wind_speed_ms": [latest_speed],
+            "temperature_c": [latest_temp],
+        }
+        for pf in ["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]:
+            if pf in hist.columns:
+                new_data[pf] = [hist[pf].iloc[-1]]
+
+        new_row = pd.DataFrame(new_data, index=[ts])
         hist = pd.concat([hist, new_row])
 
     out = pd.DataFrame(preds_dict, index=future_idx)
