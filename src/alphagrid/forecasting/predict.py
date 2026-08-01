@@ -30,6 +30,9 @@ def predict_quantile_forecasts(df: pd.DataFrame, horizon_hours: int = 24) -> pd.
     elif hist.index.tz is None:
         hist.index = hist.index.tz_localize("UTC")
 
+    if len(hist) < 24:
+        raise ValueError(f"Input DataFrame requires at least 24 historical rows, got {len(hist)}.")
+
     active_feats = get_active_features(hist)
     last_ts = hist.index[-1]
     future_idx = pd.date_range(

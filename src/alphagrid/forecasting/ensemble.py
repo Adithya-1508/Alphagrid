@@ -28,6 +28,7 @@ def train_ensemble_models(df: pd.DataFrame) -> dict[str, float]:
 
     tscv = TimeSeriesSplit(n_splits=5)
     oof_preds = np.zeros((len(X), 3))
+    val_indices_list: list[int] = []
 
     for train_idx, val_idx in tscv.split(X):
         X_tr, X_va = X.iloc[train_idx], X.iloc[val_idx]
@@ -44,6 +45,7 @@ def train_ensemble_models(df: pd.DataFrame) -> dict[str, float]:
         oof_preds[val_idx, 0] = m_lgb.predict(X_va)
         oof_preds[val_idx, 1] = m_xgb.predict(X_va)
         oof_preds[val_idx, 2] = m_cb.predict(X_va)
+        val_indices_list.extend(val_idx)
 
     # Train final base models on full dataset
     final_lgb = lgb.LGBMRegressor(random_state=42, verbosity=-1, n_estimators=100)
@@ -54,8 +56,8 @@ def train_ensemble_models(df: pd.DataFrame) -> dict[str, float]:
     final_xgb.fit(X, y)
     final_cb.fit(X, y)
 
-    # Fit Ridge meta-learner on valid OOF indices
-    val_indices = np.where(oof_preds.sum(axis=1) != 0)[0]
+    # Fit Ridge meta-learner on explicit out-of-fold validation indices
+    val_indices = np.array(val_indices_list)
     meta_learner = Ridge(alpha=1.0, positive=True)
     meta_learner.fit(oof_preds[val_indices], y.iloc[val_indices])
 
@@ -92,6 +94,9 @@ def predict_ensemble(df: pd.DataFrame, horizon_hours: int = 24) -> pd.DataFrame:
         hist.index = pd.to_datetime(hist.index, utc=True)
     elif hist.index.tz is None:
         hist.index = hist.index.tz_localize("UTC")
+
+    if len(hist) < 24:
+        raise ValueError(f"Input DataFrame requires at least 24 historical rows, got {len(hist)}.")
 
     active_feats = get_active_features(hist)
     last_ts = hist.index[-1]
