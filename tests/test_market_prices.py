@@ -10,10 +10,17 @@ def test_fetch_market_prices():
     prices = fetch_market_prices("2026-05-01T00:00:00Z", "2026-05-05T00:00:00Z")
     assert isinstance(prices, pd.DataFrame)
     assert not prices.empty
-    assert set(["day_ahead_price_eur_mwh", "gas_price_eur_mwh", "carbon_price_eur_t"]).issubset(
-        prices.columns
-    )
+    expected_cols = {
+        "day_ahead_price_eur_mwh",
+        "intraday_price_eur_mwh",
+        "imbalance_price_eur_mwh",
+        "gas_price_eur_mwh",
+        "carbon_price_eur_t",
+    }
+    assert expected_cols.issubset(prices.columns)
     assert (prices["day_ahead_price_eur_mwh"] >= 0).all()
+    assert (prices["intraday_price_eur_mwh"] >= 0).all()
+    assert (prices["imbalance_price_eur_mwh"] >= 0).all()
 
 
 def test_synthetic_feature_store_includes_prices():
