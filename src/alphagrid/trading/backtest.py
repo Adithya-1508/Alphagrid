@@ -42,9 +42,7 @@ def run_backtest(
     p10 = df_predictions.get("p10", p50 * 0.9)
     p90 = df_predictions.get("p90", p50 * 1.1)
 
-    prices = df_features.get(
-        "day_ahead_price_eur_mwh", pd.Series(60.0, index=df_predictions.index)
-    )
+    prices = df_features.get("day_ahead_price_eur_mwh", pd.Series(60.0, index=df_predictions.index))
 
     # Reindex prices to align with forecast horizon, filling NaN with default price 60.0 EUR/MWh
     aligned_prices = prices.reindex(df_predictions.index).ffill().bfill().fillna(60.0)
